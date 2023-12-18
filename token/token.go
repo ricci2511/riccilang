@@ -12,7 +12,7 @@ const (
 	ILLEGAL = "ILLEGAL"
 	EOF     = "EOF"
 
-	// Identifiers + literals
+	// Identifiers & literals
 	IDENT = "IDENT"
 	INT   = "INT"
 
@@ -33,3 +33,16 @@ const (
 	FUNCTION = "FUNCTION"
 	LET      = "LET"
 )
+
+var keywords = map[string]TokenType{
+	"fn":  FUNCTION,
+	"let": LET,
+}
+
+// Returns the correct token type for a given identifier, handles both keywords (e.g. LET) and user-defined identifiers (e.g. myVar)
+func LookupIdent(ident string) TokenType {
+	if tok, ok := keywords[ident]; ok {
+		return tok
+	}
+	return IDENT
+}
