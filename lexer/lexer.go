@@ -20,7 +20,7 @@ func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
 		l.ch = 0 // Reached end of file, return ASCII code "NUL"
 	} else {
-		l.ch = l.input[l.readPosition] // Get next char
+		l.ch = l.input[l.readPosition] // Move to next char
 	}
 	l.position = l.readPosition // Update current position
 	l.readPosition += 1         // Update reading position
@@ -36,7 +36,7 @@ func (l *Lexer) peekChar() byte {
 func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
 
-	l.eatWhitespace() // Skip whitespaces (spaces, tabs, newlines, etc.)
+	l.eatWhitespace()
 
 	// Generate the correct token based on the current char
 	switch l.ch {
