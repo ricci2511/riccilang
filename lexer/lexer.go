@@ -18,12 +18,19 @@ func New(input string) *Lexer {
 // Only supports ASCII for now
 func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
-		l.ch = 0 // ASCII code for "NUL" (null)
+		l.ch = 0 // Reached end of file, return ASCII code "NUL"
 	} else {
 		l.ch = l.input[l.readPosition] // Get next char
 	}
 	l.position = l.readPosition // Update current position
 	l.readPosition += 1         // Update reading position
+}
+
+func (l *Lexer) peekChar() byte {
+	if l.readPosition >= len(l.input) {
+		return 0 // Reached end of file, return ASCII code "NUL"
+	}
+	return l.input[l.readPosition] // Return next char
 }
 
 func (l *Lexer) NextToken() token.Token {
@@ -34,7 +41,35 @@ func (l *Lexer) NextToken() token.Token {
 	// Generate the correct token based on the current char
 	switch l.ch {
 	case '=':
-		tok = newToken(token.ASSIGN, l.ch)
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			literal := string(ch) + string(l.ch) // Build the literal "=="
+			tok = newToken(token.EQ, literal)
+		} else {
+			tok = newToken(token.ASSIGN, l.ch)
+		}
+	case '+':
+		tok = newToken(token.PLUS, l.ch)
+	case '-':
+		tok = newToken(token.MINUS, l.ch)
+	case '!':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			literal := string(ch) + string(l.ch) // Build the literal "!="
+			tok = newToken(token.NOT_EQ, literal)
+		} else {
+			tok = newToken(token.BANG, l.ch)
+		}
+	case '*':
+		tok = newToken(token.ASTERISK, l.ch)
+	case '/':
+		tok = newToken(token.SLASH, l.ch)
+	case '<':
+		tok = newToken(token.LT, l.ch)
+	case '>':
+		tok = newToken(token.GT, l.ch)
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case '(':
@@ -43,8 +78,6 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.RPAREN, l.ch)
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
-	case '+':
-		tok = newToken(token.PLUS, l.ch)
 	case '{':
 		tok = newToken(token.LBRACE, l.ch)
 	case '}':
@@ -70,7 +103,8 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-func newToken(tokenType token.TokenType, ch byte) token.Token {
+// Helper function to create a new token from a given token type and char (byte or string)
+func newToken[T byte | string](tokenType token.TokenType, ch T) token.Token {
 	return token.Token{Type: tokenType, Literal: string(ch)}
 }
 
