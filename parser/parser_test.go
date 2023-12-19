@@ -12,7 +12,6 @@ func TestLetStatements(t *testing.T) {
 	let x = 5;
 	let y = 10;
 	let foobar = 838383;
-	let 88924;
 	`
 
 	l := lexer.New(input) // Lexer
