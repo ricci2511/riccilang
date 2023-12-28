@@ -121,3 +121,13 @@ func (es *ExpressionStatement) String() string {
 	}
 	return ""
 }
+
+// The expression node that represents an integer literal (e.g. 5;)
+type IntegerLiteral struct {
+	Token token.Token // The token.INT token
+	Value int64
+}
+
+func (il *IntegerLiteral) expressionNode()      {}
+func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
+func (il *IntegerLiteral) String() string       { return il.Token.Literal }

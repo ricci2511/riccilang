@@ -2,34 +2,54 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/ricci2511/riccilang/ast"
 	"github.com/ricci2511/riccilang/lexer"
 	"github.com/ricci2511/riccilang/token"
 )
 
+const (
+	_ int = iota
+	LOWEST
+	EQUALS      // ==
+	LESSGREATER // > or <
+	SUM         // +
+	PRODUCT     // *
+	PREFIX      // -X or !X
+	CALL        // fn(X)
+)
+
+type (
+	prefixParseFn func() ast.Expression
+	infixParseFn  func(ast.Expression) ast.Expression
+)
+
 // The parser of the riccilang language. It's responsible for producing the AST from the lexer's tokens.
 type Parser struct {
-	l         *lexer.Lexer
-	currToken token.Token
-	peekToken token.Token
-	errors    []string
+	l              *lexer.Lexer
+	errors         []string
+	currToken      token.Token
+	peekToken      token.Token
+	prefixParseFns map[token.TokenType]prefixParseFn
+	infixParseFns  map[token.TokenType]infixParseFn
 }
 
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{l: l, errors: []string{}}
 	p.nextToken() // First call only initializes peekToken
 	p.nextToken() // Call a second time to initialize currToken
+
+	// Register all available prefix parsers for the corresponding token types
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+
 	return p
 }
 
 func (p *Parser) Errors() []string {
 	return p.errors
-}
-
-func (p *Parser) nextToken() {
-	p.currToken = p.peekToken
-	p.peekToken = p.l.NextToken()
 }
 
 func (p *Parser) ParseProgram() *ast.Program {
@@ -48,15 +68,27 @@ func (p *Parser) ParseProgram() *ast.Program {
 	return program
 }
 
+func (p *Parser) nextToken() {
+	p.currToken = p.peekToken
+	p.peekToken = p.l.NextToken()
+}
+
+func (p *Parser) registerPrefix(tt token.TokenType, fn prefixParseFn) {
+	p.prefixParseFns[tt] = fn
+}
+
+func (p *Parser) registerInfix(tt token.TokenType, fn infixParseFn) {
+	p.infixParseFns[tt] = fn
+}
+
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.currToken.Type {
 	case token.LET:
 		return p.parseLetStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
-	// TODO: Add more statements parsing cases
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
 }
 
@@ -93,6 +125,49 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	}
 
 	return stmt
+}
+
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{Token: p.currToken}
+
+	// TODO: Handle precedences
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefixFn := p.prefixParseFns[p.currToken.Type]
+
+	if prefixFn != nil {
+		leftExp := prefixFn()
+		return leftExp
+	}
+
+	return nil
+}
+
+// Prefix parsers
+
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{Token: p.currToken, Value: p.currToken.Literal}
+}
+
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	lit := &ast.IntegerLiteral{Token: p.currToken}
+
+	val, err := strconv.ParseInt(p.currToken.Literal, 0, 64)
+	if err != nil {
+		p.errors = append(p.errors, fmt.Sprintf("could not parse %q as integer", p.currToken.Literal))
+		return nil
+	}
+
+	lit.Value = val
+	return lit
 }
 
 // Helper functions
